@@ -1,0 +1,25 @@
+# Local installation, generated credentials and user data
+.runtime/
+.venv/
+.env
+.env.*
+!.env.example
+*.sqlite*
+/02_Models/
+/03_TTS/
+/04_ASR/
+/12_Logs/
+/13_Backups/
+/14_Workspace/
+
+# Build and test output
+.vs/
+bin/
+obj/
+/15_Control-Center/App/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+*.pdb
+*.zip

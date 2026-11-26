@@ -1,0 +1,74 @@
+{
+  "name": "JuiAI Terminal",
+  "port": 12494,
+  "retrieval": {
+    "model": ""
+  },
+  "model": {
+    "base_url": "http://127.0.0.1:8085/v1",
+    "id": "jui-bonsai2",
+    "context": 65536,
+    "cache_type": "q8_0"
+  },
+  "services": {
+    "openclaw": "http://127.0.0.1:18790",
+    "hermes": "http://127.0.0.1:8643",
+    "opencode": "http://127.0.0.1:4097"
+  },
+  "executables": {
+    "node": "node.exe",
+    "openclaw": "integrations/openclaw/node_modules/openclaw/openclaw.mjs",
+    "hermes": "integrations/hermes/.venv/Scripts/python.exe",
+    "opencode": "integrations/opencode/node_modules/opencode-ai/bin/opencode.exe"
+  },
+  "plugins": {
+    "workspace": true,
+    "git": true,
+    "desktop": true
+  },
+  "voice": {
+    "tts": {
+      "base_url": "http://127.0.0.1:8188",
+      "model_path": "s2-pro-bnb-nf4",
+      "reference_audio": "integrations/fish/reference.wav",
+      "reference_text": "integrations/fish/reference.txt",
+      "input_dir": "integrations/comfyui/input",
+      "output_dir": "integrations/comfyui/output",
+      "input_subdir": "JuiAI/reference",
+      "output_prefix": "JuiAI/FishAudio/Workbench",
+      "cleanup_comfy_output": true,
+      "language": "en",
+      "device": "cuda",
+      "precision": "float16",
+      "attention": "sdpa",
+      "max_new_tokens": 256,
+      "chunk_length": 200,
+      "temperature": 0.75,
+      "top_p": 0.75,
+      "repetition_penalty": 1.15,
+      "seed": 42,
+      "keep_model_loaded": false,
+      "offload_to_cpu": false,
+      "compile_model": false,
+      "timeout_sec": 900,
+      "poll_interval_sec": 1.0
+    },
+    "asr": {
+      "model_type": "fireredasr2_llm",
+      "display_name": "FireRedASR2-LLM / INT8",
+      "model_dir": "04_ASR/FireRedASR2-LLM",
+      "runtime_dir": "04_ASR/FireRed-Runtime",
+      "source_dir": "04_ASR/FireRedASR2S",
+      "revision": "2c5e0f415b9afb8f67cb8b00ea4c54959f70e824",
+      "source_commit": "4e7d9aaf4482a47cec1724807026b9b151926eb5",
+      "num_threads": 8,
+      "min_free_vram_gib": 14,
+      "beam_size": 3,
+      "max_new_tokens": 256,
+      "timeout_sec": 240
+    },
+    "max_seconds": 40
+  },
+  "task_timeout": 600,
+  "local_presets": []
+}
