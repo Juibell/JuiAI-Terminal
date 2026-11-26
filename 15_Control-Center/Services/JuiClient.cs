@@ -55,6 +55,8 @@ public sealed class JuiClient : IDisposable
             UseShellExecute = false, CreateNoWindow = true,
             Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{Path.Combine(Root, file)}\" {arguments}"
         };
+        // Let Windows PowerShell discover its own modules when launched from PowerShell 7.
+        start.Environment.Remove("PSModulePath");
         using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start the local service.");
         await process.WaitForExitAsync();
         if (process.ExitCode != 0) throw new InvalidOperationException("Service startup failed. Check the local JuiAI Terminal logs.");

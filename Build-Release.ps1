@@ -17,7 +17,9 @@ try {
     $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
     $icon = Join-Path $project 'Assets\JuiAI-Terminal.ico'
     $launcher = Join-Path $bundle 'JuiAI-Terminal.exe'
-    & $compiler /nologo /target:winexe /platform:x64 /optimize+ /reference:System.Windows.Forms.dll "/win32icon:$icon" "/out:$launcher" (Join-Path $PSScriptRoot 'launcher\Program.cs')
+    $metadata = Join-Path $scratch 'LauncherVersion.cs'
+    Set-Content -LiteralPath $metadata -Encoding ascii -Value ('[assembly: System.Reflection.AssemblyVersion("{0}.0")][assembly: System.Reflection.AssemblyFileVersion("{0}.0")]' -f $Version)
+    & $compiler /nologo /target:winexe /platform:x64 /optimize+ /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "/win32icon:$icon" "/out:$launcher" (Join-Path $PSScriptRoot 'launcher\Program.cs') $metadata
     if ($LASTEXITCODE -ne 0) { throw 'The Windows launcher could not be built.' }
     foreach ($name in @('JuiAI-Terminal.cmd','Initialize-Terminal.ps1','Start-Jui.ps1','Start-JuiAI.ps1','README.md')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $bundle
