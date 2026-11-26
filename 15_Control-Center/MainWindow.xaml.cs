@@ -81,7 +81,9 @@ public sealed partial class MainWindow : Window
         navigation.DisplayModeChanged += (_, e) => statusText.Visibility = e.DisplayMode == NavigationViewDisplayMode.Expanded ? Visibility.Visible : Visibility.Collapsed;
         navigation.SelectionChanged += (_, e) => { if (ready && !syncingNavigation && e.SelectedItemContainer?.Tag is string id) Run(() => ShowPage(id)); };
         Root.Children.Add(navigation);
-        Root.Loaded += (_, _) => Run(Initialize);
+        navigation.PaneOpened += (_, _) => UpdatePaneButtonLabel();
+        navigation.PaneClosed += (_, _) => UpdatePaneButtonLabel();
+        Root.Loaded += (_, _) => { UpdatePaneButtonLabel(); Run(Initialize); };
         Closed += (_, _) => { lifetime.Cancel(); speech.Cancel(); debugCancellation?.Cancel(); audio.Dispose(); tray.Dispose(); vm.Client.Dispose(); };
     }
 
@@ -163,6 +165,14 @@ public sealed partial class MainWindow : Window
     }
     private void ShowError(string text) { notice.Title = Locale.Text("Action incomplete"); notice.Message = text; notice.Severity = InfoBarSeverity.Error; notice.IsOpen = true; }
     private void ShowInfo(string text) { notice.Title = "JuiAI Terminal"; notice.Message = text; notice.Severity = InfoBarSeverity.Informational; notice.IsOpen = true; }
+    private void UpdatePaneButtonLabel()
+    {
+        if (Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(navigation) == 0) return;
+        var templateRoot = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(navigation, 0) as FrameworkElement;
+        if (templateRoot?.FindName("TogglePaneButton") is Button button)
+            SetButtonLabel(button, Locale.Text(navigation.IsPaneOpen ? "Close navigation" : "Open navigation"));
+    }
+
     private static void SetButtonLabel(Button button, string label)
     {
         ToolTipService.SetToolTip(button, label);
@@ -174,6 +184,7 @@ public sealed partial class MainWindow : Window
         Locale.Save(vm.Client.Root, language);
         Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = language;
         vm.Client.RefreshEventLanguage();
+        UpdatePaneButtonLabel();
         notice.IsOpen = false;
         refreshShellLanguage();
         await vm.Refresh();
