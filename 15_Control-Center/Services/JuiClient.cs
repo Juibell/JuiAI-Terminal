@@ -9,14 +9,25 @@ namespace JuiAI.ControlCenter.Services;
 public sealed class JuiClient : IDisposable
 {
     private readonly HttpClient http;
+    private readonly object eventLock = new();
+    private CancellationTokenSource? eventConnection;
     public string Root { get; } = FindRoot();
     public bool OwnsBackend { get; private set; }
     public JuiClient(HttpMessageHandler? handler = null)
     {
-        http = handler == null ? new HttpClient() : new HttpClient(handler);
+        http = new HttpClient(new LanguageHandler(handler ?? new HttpClientHandler()));
         http.Timeout = Timeout.InfiniteTimeSpan;
         http.BaseAddress = new Uri("http://127.0.0.1:12394/");
     }
+    private sealed class LanguageHandler(HttpMessageHandler inner) : DelegatingHandler(inner)
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            request.Headers.AcceptLanguage.Add(new StringWithQualityHeaderValue(Locale.Language));
+            return base.SendAsync(request, token);
+        }
+    }
+
     public static string FindRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -25,7 +36,7 @@ public sealed class JuiClient : IDisposable
             if (File.Exists(Path.Combine(directory.FullName, "05_Agent-Router", "settings.json"))) return directory.FullName;
             directory = directory.Parent;
         }
-        throw new InvalidOperationException("Keep the app inside the extracted JuiAI Terminal project folder.");
+        throw new InvalidOperationException(Locale.Text("Keep the app inside the extracted JuiAI Terminal project folder."));
     }
 
     public async Task Connect()
@@ -41,7 +52,7 @@ public sealed class JuiClient : IDisposable
             OwnsBackend = true;
         }
         if (health?["control_api"]?.GetValue<int>() != 1 || health["native"]?.GetValue<bool>() != true)
-            throw new InvalidOperationException("The legacy web workbench is running. Close it normally, then open JuiAI Terminal.");
+            throw new InvalidOperationException(Locale.Text("The legacy web workbench is running. Close it normally, then open JuiAI Terminal."));
         var encrypted = await File.ReadAllBytesAsync(Path.Combine(Root, "05_Agent-Router", ".runtime", "vault", "desktop-auth.bin"));
         var token = Encoding.UTF8.GetString(ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser));
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -57,9 +68,9 @@ public sealed class JuiClient : IDisposable
         };
         // Let Windows PowerShell discover its own modules when launched from PowerShell 7.
         start.Environment.Remove("PSModulePath");
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start the local service.");
+        using var process = Process.Start(start) ?? throw new InvalidOperationException(Locale.Text("Could not start the local service."));
         await process.WaitForExitAsync();
-        if (process.ExitCode != 0) throw new InvalidOperationException("Service startup failed. Check the local JuiAI Terminal logs.");
+        if (process.ExitCode != 0) throw new InvalidOperationException(Locale.Text("Service startup failed. Check the local JuiAI Terminal logs."));
     }
 
     public Task<JsonNode> Get(string path, int seconds = 120) => Send(HttpMethod.Get, path, null, seconds);
@@ -80,7 +91,7 @@ public sealed class JuiClient : IDisposable
         JsonNode? value = null;
         try { value = JsonNode.Parse(text); } catch (System.Text.Json.JsonException) { }
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException(value?["error"]?["message"]?.ToString() ?? value?["detail"]?.ToString() ?? $"Request failed: {(int)response.StatusCode}");
+            throw new InvalidOperationException(value?["error"]?["message"]?.ToString() ?? value?["detail"]?.ToString() ?? Locale.Format("Request failed: {0}", (int)response.StatusCode));
         return value ?? new JsonObject();
     }
 
@@ -99,7 +110,7 @@ public sealed class JuiClient : IDisposable
         content.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
         using var response = await http.PostAsync(path, content, token);
         var value = JsonNode.Parse(await response.Content.ReadAsStringAsync(token))!;
-        if (!response.IsSuccessStatusCode) throw new InvalidOperationException(value["error"]?["message"]?.ToString() ?? "Speech recognition failed.");
+        if (!response.IsSuccessStatusCode) throw new InvalidOperationException(value["error"]?["message"]?.ToString() ?? Locale.Text("Speech recognition failed."));
         return value;
     }
 
@@ -112,9 +123,14 @@ public sealed class JuiClient : IDisposable
         if (!response.IsSuccessStatusCode)
         {
             var value = JsonNode.Parse(await response.Content.ReadAsStringAsync(token));
-            throw new InvalidOperationException(value?["error"]?["message"]?.ToString() ?? "Speech output failed.");
+            throw new InvalidOperationException(value?["error"]?["message"]?.ToString() ?? Locale.Text("Speech output failed."));
         }
         return await response.Content.ReadAsByteArrayAsync(token);
+    }
+
+    public void RefreshEventLanguage()
+    {
+        lock (eventLock) eventConnection?.Cancel();
     }
 
     public async Task Events(Func<JsonNode, Task> receive, CancellationToken token, long after = 0)
@@ -122,12 +138,14 @@ public sealed class JuiClient : IDisposable
         long cursor = after;
         while (!token.IsCancellationRequested)
         {
+            using var connection = CancellationTokenSource.CreateLinkedTokenSource(token);
+            lock (eventLock) eventConnection = connection;
             try
             {
-                using var response = await http.GetAsync("api/v1/events?after=" + cursor, HttpCompletionOption.ResponseHeadersRead, token);
+                using var response = await http.GetAsync("api/v1/events?after=" + cursor, HttpCompletionOption.ResponseHeadersRead, connection.Token);
                 response.EnsureSuccessStatusCode();
-                using var reader = new StreamReader(await response.Content.ReadAsStreamAsync(token));
-                while (await reader.ReadLineAsync(token) is { } line)
+                using var reader = new StreamReader(await response.Content.ReadAsStreamAsync(connection.Token));
+                while (await reader.ReadLineAsync(connection.Token) is { } line)
                 {
                     if (!line.StartsWith("data: ", StringComparison.Ordinal)) continue;
                     var value = JsonNode.Parse(line[6..])!;
@@ -136,9 +154,17 @@ public sealed class JuiClient : IDisposable
                 }
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { return; }
+            catch (OperationCanceledException) when (connection.IsCancellationRequested) { }
             catch (HttpRequestException) { }
             catch (IOException) { }
-            await Task.Delay(1500, token);
+            finally
+            {
+                lock (eventLock)
+                {
+                    if (ReferenceEquals(eventConnection, connection)) eventConnection = null;
+                }
+            }
+            if (!connection.IsCancellationRequested) await Task.Delay(1500, token);
         }
     }
 

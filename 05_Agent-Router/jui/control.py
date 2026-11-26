@@ -194,15 +194,9 @@ class Control:
                 "sensitive": bool(image),
             },
         )
-        self.store.put(
-            "conversation",
-            {
-                **conversation,
-                "title": prompt[:60]
-                if conversation["title"] == "New chat"
-                else conversation["title"],
-            },
-        )
+        if conversation.get("title_is_placeholder"):
+            conversation.update(title=prompt[:60], title_is_placeholder=False)
+        self.store.put("conversation", conversation)
         worker = asyncio.create_task(self.execute(identity, image))
         self.workers[identity] = worker
         worker.add_done_callback(lambda _: self.workers.pop(identity, None))

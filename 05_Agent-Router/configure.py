@@ -7,6 +7,7 @@ import yaml
 
 from jui.config import APP, STATE, WORKSPACE
 from jui.credentials import private_directory
+from jui.language import saved_language, translate
 
 
 def save(path, value):
@@ -21,9 +22,7 @@ def main():
     secret_file = STATE / "secrets.json"
     settings_file = APP / "settings.json"
     if not settings_file.exists():
-        raise RuntimeError(
-            "JuiAI Terminal requires settings.json"
-        )
+        raise RuntimeError("JuiAI Terminal requires settings.json")
     if not secret_file.exists():
         save(
             secret_file,
@@ -218,7 +217,10 @@ def main():
         },
     )
     print(
-        "Jui profiles configured. Secrets were not printed. Existing standalone tool profiles were not modified."
+        translate(
+            "Jui profiles configured. Secrets were not printed. Existing standalone tool profiles were not modified.",
+            saved_language(),
+        )
     )
 
 

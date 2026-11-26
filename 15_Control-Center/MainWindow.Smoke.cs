@@ -14,7 +14,7 @@ public sealed partial class MainWindow
 {
     private async Task UiSmoke()
     {
-        var directory = Path.Combine(vm.Client.Root, "12_Logs", "ControlCenter-QA");
+        var directory = Path.Combine(vm.Client.Root, "12_Logs", "ControlCenter-QA", Locale.Language);
         Directory.CreateDirectory(directory);
         var results = new List<object>();
         foreach (var id in new[] { "chat", "history", "agents", "models", "debug", "workspace", "memory", "voice", "voice-processing", "tools", "updates", "settings" })
@@ -26,7 +26,7 @@ public sealed partial class MainWindow
         AppWindow.Resize(new Windows.Graphics.SizeInt32(960, 720)); await Task.Delay(300);
         await ShowPage("chat");
         messages!.Children.Clear();
-        messages.Children.Add(Controls.MarkdownView.Render("# JuiAI Terminal\n\nLong text and native Markdown layout test. This paragraph exercises word wrapping in a narrow window.\n\n**Bold**, *italic*, and `inline code`.\n\n- First item\n- Second item\n\n```python\nprint('JuiAI Terminal')\n```\n\n" + new string('W', 180)));
+        messages.Children.Add(Controls.MarkdownView.Render(Locale.Text("# JuiAI Terminal\n\nLong text and native Markdown layout test. This paragraph exercises word wrapping in a narrow window.\n\n**Bold**, *italic*, and `inline code`.\n\n- First item\n- Second item\n\n```python\nprint('JuiAI Terminal')\n```\n\n") + new string('W', 180)));
         await Task.Delay(400); await Snapshot(Path.Combine(directory, "chat-narrow-long-text.png"));
         results.Add(new { page = "chat-narrow", width = Root.ActualWidth, height = Root.ActualHeight, rendered = pageHost.Children.Count > 0 });
         await ShowPage("debug"); await Task.Delay(400); await Snapshot(Path.Combine(directory, "debug-narrow.png"));
@@ -36,7 +36,7 @@ public sealed partial class MainWindow
         await File.WriteAllTextAsync(Path.Combine(directory, "native-ui-results.json"), JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true }));
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1360, 900));
         if (Environment.GetCommandLineArgs().Contains("--voice-smoke")) await VoiceSmoke(directory);
-        else { await ShowPage("chat"); ShowInfo("Native interface checks completed."); }
+        else { await ShowPage("chat"); ShowInfo(Locale.Text("Native interface checks completed.")); }
     }
 
     private IEnumerable<string> LocalDebugProfiles(string capability)
@@ -86,9 +86,9 @@ public sealed partial class MainWindow
             await Snapshot(Path.Combine(directory, $"debug-{mode}-result.png"));
         }
         await File.WriteAllTextAsync(Path.Combine(directory, "model-debug-live-results.json"), results.ToJsonString(new() { WriteIndented = true }));
-        if (results.Count == 0) ShowInfo("No enabled local model profiles were available for testing.");
-        else if (results.All(r => r?["status"]?.ToString().StartsWith("Completed") == true)) ShowInfo("Model tests completed.");
-        else ShowError("Some model tests did not finish. See the local test results.");
+        if (results.Count == 0) ShowInfo(Locale.Text("No enabled local model profiles were available for testing."));
+        else if (results.All(r => r?["status"]?.ToString().StartsWith(Locale.Text("Completed")) == true)) ShowInfo(Locale.Text("Model tests completed."));
+        else ShowError(Locale.Text("Some model tests did not finish. See the local test results."));
     }
 
     private async Task Snapshot(string path)

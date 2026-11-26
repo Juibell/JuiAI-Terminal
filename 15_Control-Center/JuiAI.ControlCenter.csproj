@@ -24,6 +24,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);App\**;Tests\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Localization\zh-CN.json" WithCulture="false" LogicalName="JuiAI.Terminal.zh-CN.json" />
     <None Update="Assets\JuiAI-Terminal.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Compile Remove="Tests\**\*.cs" />
     <None Remove="Tests\**" />

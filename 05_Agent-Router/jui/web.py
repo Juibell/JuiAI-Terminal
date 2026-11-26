@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import plugins
 from .config import load_settings
@@ -15,6 +16,7 @@ from .control_api import internal as control_internal
 from .control_api import router as control_router
 from .control_debug import router as debug_router
 from .control_voice_processing import router as voice_processing_router
+from .language import active_language, negotiate_language, translate
 from .voice import Voice
 
 gpu_lock = asyncio.Lock()
@@ -41,14 +43,21 @@ app = FastAPI(
 )
 
 
-@app.exception_handler(HTTPException)
+@app.exception_handler(StarletteHTTPException)
 async def http_failure(request, error):
     if request.url.path.startswith(("/api/v1/", "/internal/")):
         return JSONResponse(
-            {"error": {"code": "request_failed", "message": str(error.detail)}},
+            {
+                "error": {
+                    "code": "request_failed",
+                    "message": translate(str(error.detail)),
+                }
+            },
             status_code=error.status_code,
         )
-    return JSONResponse({"detail": error.detail}, status_code=error.status_code)
+    return JSONResponse(
+        {"detail": translate(error.detail)}, status_code=error.status_code
+    )
 
 
 @app.exception_handler(RequestValidationError)
@@ -58,13 +67,15 @@ async def validation_failure(request, error):
             {
                 "error": {
                     "code": "validation_failed",
-                    "message": "Invalid request fields",
+                    "message": translate("Invalid request fields"),
                     "fields": [list(e["loc"]) for e in error.errors()],
                 }
             },
             status_code=422,
         )
-    return JSONResponse({"detail": "Invalid request fields"}, status_code=422)
+    return JSONResponse(
+        {"detail": translate("Invalid request fields")}, status_code=422
+    )
 
 
 @app.exception_handler(httpx.HTTPError)
@@ -74,8 +85,10 @@ async def upstream_failure(request, error):
         {
             "error": {
                 "code": "upstream_failed",
-                "message": type(error).__name__
-                + ": local service or external API failed; no retry was performed",
+                "message": translate(
+                    type(error).__name__
+                    + ": local service or external API failed; no retry was performed"
+                ),
             }
         },
         status_code=502,
@@ -86,20 +99,20 @@ async def upstream_failure(request, error):
 async def missing_item(request, error):
     if request.url.path.startswith(("/api/v1/", "/internal/")):
         return JSONResponse(
-            {"error": {"code": "not_found", "message": "Item not found"}},
+            {"error": {"code": "not_found", "message": translate("Item not found")}},
             status_code=404,
         )
-    return JSONResponse({"detail": "Item not found"}, status_code=404)
+    return JSONResponse({"detail": translate("Item not found")}, status_code=404)
 
 
 @app.exception_handler(ValueError)
 async def invalid_item(request, error):
     if request.url.path.startswith(("/api/v1/", "/internal/")):
         return JSONResponse(
-            {"error": {"code": "invalid_request", "message": str(error)}},
+            {"error": {"code": "invalid_request", "message": translate(str(error))}},
             status_code=400,
         )
-    return JSONResponse({"detail": str(error)}, status_code=400)
+    return JSONResponse({"detail": translate(str(error))}, status_code=400)
 
 
 def library(request):
@@ -111,7 +124,9 @@ async def local_boundary(request, call_next):
     port = load_settings()["port"]
     hosts = {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}", "testserver"}
     if request.headers.get("host", "").lower() not in hosts:
-        return JSONResponse({"detail": "Invalid local host"}, status_code=403)
+        return JSONResponse(
+            {"detail": translate("Invalid local host")}, status_code=403
+        )
     origin = request.headers.get("origin")
     if origin and origin not in {
         f"http://127.0.0.1:{port}",
@@ -119,7 +134,7 @@ async def local_boundary(request, call_next):
         "http://testserver",
     }:
         return JSONResponse(
-            {"detail": "Cross-origin request rejected"}, status_code=403
+            {"detail": translate("Cross-origin request rejected")}, status_code=403
         )
     if request.url.path.startswith("/api/") and request.url.path != "/api/health":
         center = getattr(request.app.state, "control", None)
@@ -130,7 +145,8 @@ async def local_boundary(request, call_next):
             or not hmac.compare_digest(bearer, center.store.desktop_token())
         ):
             return JSONResponse(
-                {"detail": "Desktop authentication required"}, status_code=401
+                {"detail": translate("Desktop authentication required")},
+                status_code=401,
             )
     response = await call_next(request)
     response.headers.update(
@@ -146,9 +162,22 @@ async def local_boundary(request, call_next):
     return response
 
 
+@app.middleware("http")
+async def interface_language(request, call_next):
+    language = negotiate_language(request.headers.get("accept-language"))
+    token = active_language.set(language)
+    try:
+        response = await call_next(request)
+        response.headers["Content-Language"] = language
+        response.headers.add_vary_header("Accept-Language")
+        return response
+    finally:
+        active_language.reset(token)
+
+
 @app.get("/")
 async def index():
-    return {"name": "JuiAI Terminal", "interface": "Windows desktop"}
+    return {"name": "JuiAI Terminal", "interface": translate("Windows desktop")}
 
 
 @app.get("/api/health")

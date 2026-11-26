@@ -6,6 +6,8 @@
   <ImplicitUsings>enable</ImplicitUsings>
  </PropertyGroup>
  <ItemGroup>
+  <EmbeddedResource Include="..\Localization\zh-CN.json" WithCulture="false" LogicalName="JuiAI.Terminal.zh-CN.json" />
+  <Compile Include="..\Locale.cs" Link="Locale.cs"/>
   <Compile Include="..\Services\JuiClient.cs" Link="JuiClient.cs"/>
   <Compile Include="..\ViewModels\ControlViewModel.cs" Link="ControlViewModel.cs"/>
   <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0"/>

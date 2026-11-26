@@ -40,14 +40,14 @@ public sealed class TrayIcon : IDisposable
         if (dpi == 0) dpi = 96;
         // Load a private HICON at the notification area's small-icon size.
         ownedIcon = LoadImage(0, iconPath, ImageIcon, GetSystemMetricsForDpi(SmallIconWidth, dpi), GetSystemMetricsForDpi(SmallIconHeight, dpi), LoadFromFile);
-        if (ownedIcon == 0) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Could not load the JuiAI Terminal notification icon.");
+        if (ownedIcon == 0) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), Locale.Text("Could not load the JuiAI Terminal notification icon."));
         procedure = Handle;
         var type = new WindowClass { procedure = procedure, className = className, instance = GetModuleHandle(null) };
         if (RegisterClass(ref type) == 0)
         {
             int error = Marshal.GetLastWin32Error();
             DestroyIcon(ownedIcon);
-            throw new System.ComponentModel.Win32Exception(error, "Could not register the notification window.");
+            throw new System.ComponentModel.Win32Exception(error, Locale.Text("Could not register the notification window."));
         }
         window = CreateWindowEx(0, className, "", 0, 0, 0, 0, 0, new nint(-3), 0, type.instance, 0);
         if (window == 0)
@@ -55,7 +55,7 @@ public sealed class TrayIcon : IDisposable
             int error = Marshal.GetLastWin32Error();
             UnregisterClass(className, type.instance);
             DestroyIcon(ownedIcon);
-            throw new System.ComponentModel.Win32Exception(error, "Could not create the notification window.");
+            throw new System.ComponentModel.Win32Exception(error, Locale.Text("Could not create the notification window."));
         }
     }
     private NotifyData Data() => new() { size = (uint)Marshal.SizeOf<NotifyData>(), window = window, id = 1, flags = 1 | 2 | 4, message = 0x8001, icon = ownedIcon, tip = "JuiAI Terminal", info = "", infoTitle = "" };

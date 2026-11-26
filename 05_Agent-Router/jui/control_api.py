@@ -21,6 +21,7 @@ from .control_voice import (
 from .control_voice import (
     transcribe as voice_transcribe,
 )
+from .language import localize_error, localize_update
 
 router = APIRouter(prefix="/api/v1")
 internal = APIRouter(prefix="/internal")
@@ -100,6 +101,11 @@ async def events(request: Request, after: int = 0):
             rows = c.store.events(cursor)
             for event in rows:
                 cursor = event["seq"]
+                if event["kind"] in {"run", "update"}:
+                    localize = (
+                        localize_update if event["kind"] == "update" else localize_error
+                    )
+                    event = {**event, "data": localize(event["data"])}
                 yield f"id: {cursor}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
             heartbeat += 1
             if heartbeat % 40 == 0:
@@ -133,7 +139,11 @@ async def conversation(identity: str, request: Request):
     return {
         **c.store.get("conversation", identity),
         "messages": c.store.messages(identity),
-        "runs": [r for r in c.store.list("run") if r["conversation_id"] == identity],
+        "runs": [
+            localize_error(r)
+            for r in c.store.list("run")
+            if r["conversation_id"] == identity
+        ],
     }
 
 
@@ -147,9 +157,11 @@ async def change_conversation(
     identity: str, body: ConversationChange, request: Request
 ):
     c = control(request)
+    changes = body.model_dump(exclude_none=True)
+    if body.title is not None:
+        changes["title_is_placeholder"] = False
     return c.store.put(
-        "conversation",
-        {**c.store.get("conversation", identity), **body.model_dump(exclude_none=True)},
+        "conversation", {**c.store.get("conversation", identity), **changes}
     )
 
 
@@ -228,12 +240,12 @@ async def message(identity: str, body: MessageInput, request: Request):
 async def run(identity: str, request: Request):
     value = dict(control(request).store.get("run", identity))
     value.pop("profiles", None)
-    return value
+    return localize_error(value)
 
 
 @router.post("/runs/{identity}/cancel")
 async def cancel(identity: str, request: Request):
-    return await control(request).cancel(identity)
+    return localize_error(await control(request).cancel(identity))
 
 
 class ProviderInput(BaseModel):
@@ -759,7 +771,9 @@ async def apply_updates(body: UpdateInput, request: Request):
 
 @router.get("/updates")
 async def updates(request: Request):
-    return control(request).store.list("update")[-20:]
+    return [
+        localize_update(item) for item in control(request).store.list("update")[-20:]
+    ]
 
 
 def agent_identity(request):

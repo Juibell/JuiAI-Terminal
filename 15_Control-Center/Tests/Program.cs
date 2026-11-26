@@ -1,9 +1,11 @@
 using System.Net;
+using JuiAI.ControlCenter;
 using System.Text;
 using System.Text.Json.Nodes;
 using JuiAI.ControlCenter.Services;
 using JuiAI.ControlCenter.ViewModels;
 
+int checks = 0;
 var state = """
 {"workspace_id":"test","models":[{"id":"main","name":"Main","enabled":true,"capabilities":["text","tools"]},{"id":"alternate","name":"Alternate","enabled":true,"capabilities":["text"]},{"id":"disabled","name":"Disabled","enabled":false,"capabilities":["text"]},{"id":"audio","name":"Voice","enabled":true,"capabilities":["tts"]}],"roles":{"id":"global","bindings":{"main":"main","code":"main"},"agents":{"opencode":"main"}},"workspaces":[{"id":"test","name":"Test workspace"}]}
 """;
@@ -51,7 +53,40 @@ Check(debugPath!.Contains("model_ref=asr-model") && debugPath.Contains("request_
 using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
 try { await debugClient.DebugText(new { model_ref = "independent" }, cancelled.Token); throw new Exception("Cancelled debug request was sent"); }
 catch (OperationCanceledException) { Check(true, "debug cancellation token"); }
-Console.WriteLine("14 client logic checks passed.");
+var preferenceRoot = Directory.CreateTempSubdirectory("jui-locale-");
+try
+{
+    System.Globalization.CultureInfo.CurrentUICulture = new("zh-CN");
+    Locale.Load(preferenceRoot.FullName);
+    Check(Locale.Language == "en-US" && Locale.Text("Copy code") == "Copy code", "fresh install defaults to English on any system");
+    var headers = new List<string>();
+    using var languageClient = new JuiClient(new FakeHandler(request =>
+    {
+        headers.Add(request.Headers.AcceptLanguage.Single().Value);
+        return (HttpStatusCode.OK, "{}");
+    }));
+    await languageClient.Get("test");
+    Locale.Save(preferenceRoot.FullName, Locale.Chinese);
+    Locale.Load(preferenceRoot.FullName);
+    Check(Locale.Text("Copy code") == "复制代码", "Chinese preference survives reloading");
+    await languageClient.Get("test");
+    Check(headers.SequenceEqual(["en-US", "zh-CN"]), "language change reaches new requests on the same connection");
+    Check(vm.MainModelName == "Alternate" && vm.WorkspaceChoices().Single().Name == "Test workspace", "user-authored names stay unchanged");
+    using var titleClient = new JuiClient(new FakeHandler(_ => (HttpStatusCode.OK, """
+        [{"id":"generated","title":"New chat","title_is_placeholder":true},{"id":"custom","title":"New chat","title_is_placeholder":false},{"id":"legacy","title":"New chat"}]
+        """)));
+    var history = new ControlViewModel(titleClient);
+    await history.RefreshConversations();
+    Check(history.Conversations.Single(c => c.Id == "generated").Name == "新对话" &&
+        history.Conversations.Where(c => c.Id != "generated").All(c => c.Name == "New chat"),
+        "only explicitly generated chat titles are localized");
+    var path = Path.Combine(preferenceRoot.FullName, "05_Agent-Router", ".runtime", "ui-language.txt");
+    File.WriteAllText(path, "not-a-locale");
+    Locale.Load(preferenceRoot.FullName);
+    Check(Locale.Language == "en-US", "invalid preference defaults to English");
+}
+finally { preferenceRoot.Delete(true); }
+Console.WriteLine($"{checks} client logic checks passed.");
 
 (HttpStatusCode, string) ChangeMain(HttpRequestMessage request)
 {
@@ -62,9 +97,10 @@ Console.WriteLine("14 client logic checks passed.");
         : (HttpStatusCode.BadRequest, """{"error":{"message":"model unavailable"}}""");
 }
 
-static void Check(bool value, string label)
+void Check(bool value, string label)
 {
     if (!value) throw new Exception("Failed: " + label);
+    checks++;
     Console.WriteLine("PASS " + label);
 }
 

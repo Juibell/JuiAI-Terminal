@@ -2,6 +2,8 @@
 
 # JuiAI Terminal
 
+**English** · [简体中文](README.zh-CN.md)
+
 JuiAI Terminal is a native Windows desktop app for working with AI models and agents. Connect a model you already run, or add an API provider, then use the same window to chat, manage workspace memory, test speech and vision models, and review tool requests.
 
 ## Install on Windows
@@ -9,6 +11,10 @@ JuiAI Terminal is a native Windows desktop app for working with AI models and ag
 1. Download **JuiAI-Terminal** for Windows x64 from the [latest release](https://github.com/Juibell/JuiAI-Terminal/releases/latest). Choose the Windows release ZIP under **Assets**.
 2. Extract the entire ZIP to a writable folder. Keep the launcher, router and desktop app together.
 3. Double-click **`JuiAI-Terminal.exe`** in the extracted folder. On first launch, setup prepares Python 3.12 and installs the locked router dependencies. Allow internet access for this step. The ZIP includes the compiled WinUI 3 app and its .NET runtime. To see startup messages in a terminal, run `JuiAI-Terminal.cmd`.
+
+## Display language
+
+The app opens in English on a fresh installation. To switch to Simplified Chinese, open **Settings and diagnostics → Display language** and select **简体中文**. To switch back, open **设置与诊断 → 显示语言** and select **English**. The app remembers your choice for the next launch.
 
 ## Connect your first model
 
@@ -32,11 +38,11 @@ Model weights, agent engines and optional audio tools are separate installations
 
 ## Build from source
 
-Install the x64 .NET 10 SDK specified in [global.json](15_Control-Center/global.json), then run the following commands from the repository root in PowerShell.
+Install the x64 .NET 10 SDK specified in [global.json](https://github.com/Juibell/JuiAI-Terminal/blob/main/15_Control-Center/global.json), then run the following commands from the repository root in PowerShell.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Build-ControlCenter.ps1
 .\JuiAI-Terminal.cmd
 ```
 
-The [WinUI client](15_Control-Center/) contains the desktop views, service client and client checks. The [Python router](05_Agent-Router/) contains the local API, provider adapters, workspace storage, tests and locked dependencies.
+The [WinUI client](https://github.com/Juibell/JuiAI-Terminal/tree/main/15_Control-Center) contains the desktop views, service client and client checks. The [Python router](https://github.com/Juibell/JuiAI-Terminal/tree/main/05_Agent-Router) contains the local API, provider adapters, workspace storage, tests and locked dependencies.

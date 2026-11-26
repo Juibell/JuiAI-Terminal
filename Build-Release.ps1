@@ -1,4 +1,4 @@
-param([ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.1.0', [string]$OutputDirectory = (Join-Path $PSScriptRoot 'releases'))
+param([ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.2.0', [string]$OutputDirectory = (Join-Path $PSScriptRoot 'releases'))
 $ErrorActionPreference = 'Stop'
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 [void][IO.Directory]::CreateDirectory($OutputDirectory)
@@ -21,7 +21,7 @@ try {
     Set-Content -LiteralPath $metadata -Encoding ascii -Value ('[assembly: System.Reflection.AssemblyVersion("{0}.0")][assembly: System.Reflection.AssemblyFileVersion("{0}.0")]' -f $Version)
     & $compiler /nologo /target:winexe /platform:x64 /optimize+ /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "/win32icon:$icon" "/out:$launcher" (Join-Path $PSScriptRoot 'launcher\Program.cs') $metadata
     if ($LASTEXITCODE -ne 0) { throw 'The Windows launcher could not be built.' }
-    foreach ($name in @('JuiAI-Terminal.cmd','Initialize-Terminal.ps1','Start-Jui.ps1','Start-JuiAI.ps1','README.md')) {
+    foreach ($name in @('JuiAI-Terminal.cmd','Initialize-Terminal.ps1','Start-Jui.ps1','Start-JuiAI.ps1','Launcher-Language.ps1','README.md','README.zh-CN.md')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $bundle
     }
     $art = Join-Path $bundle '15_Control-Center\Assets'

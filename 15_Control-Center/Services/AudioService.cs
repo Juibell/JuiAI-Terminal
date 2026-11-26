@@ -38,7 +38,7 @@ public sealed class AudioService : IDisposable
     }
     public async Task<byte[]> Stop()
     {
-        if (capture == null || recorded == null) throw new InvalidOperationException("There is no active recording.");
+        if (capture == null || recorded == null) throw new InvalidOperationException(Locale.Text("There is no active recording."));
         capture.StopRecording();
         try { return await recorded.Task; }
         finally { capture.Dispose(); capture = null; writer = null; recording?.Dispose(); recording = null; }
@@ -76,7 +76,7 @@ public sealed class AudioService : IDisposable
     }
     public static byte[] LoadRecording(string path)
     {
-        if (new FileInfo(path).Length > 20_000_000) throw new InvalidOperationException("Audio files must be 20 MB or smaller.");
+        if (new FileInfo(path).Length > 20_000_000) throw new InvalidOperationException(Locale.Text("Audio files must be 20 MB or smaller."));
         using var source = new AudioFileReader(path);
         return NormalizeRecording(source);
     }
@@ -95,7 +95,7 @@ public sealed class AudioService : IDisposable
     private static byte[] NormalizeRecording(ISampleProvider samples)
     {
         if (samples.WaveFormat.Channels == 2) samples = new StereoToMonoSampleProvider(samples);
-        if (samples.WaveFormat.Channels != 1) throw new InvalidOperationException("Choose a mono or stereo audio file.");
+        if (samples.WaveFormat.Channels != 1) throw new InvalidOperationException(Locale.Text("Choose a mono or stereo audio file."));
         var resampled = new WdlResamplingSampleProvider(samples, 16000);
         var pcm = new SampleToWaveProvider16(resampled);
         using var output = new MemoryStream();
@@ -105,7 +105,7 @@ public sealed class AudioService : IDisposable
             while ((count = pcm.Read(buffer, 0, buffer.Length)) > 0)
             {
                 total += count;
-                if (total > 16000 * 2 * 40) throw new InvalidOperationException("Test audio must be 40 seconds or shorter.");
+                if (total > 16000 * 2 * 40) throw new InvalidOperationException(Locale.Text("Test audio must be 40 seconds or shorter."));
                 wav.Write(buffer, 0, count);
             }
         }

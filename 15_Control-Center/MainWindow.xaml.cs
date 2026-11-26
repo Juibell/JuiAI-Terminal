@@ -19,7 +19,7 @@ public sealed partial class MainWindow : Window
     private readonly NavigationView navigation = new() { PaneDisplayMode = NavigationViewPaneDisplayMode.Auto, OpenPaneLength = 245, IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed, IsSettingsVisible = false, IsPaneOpen = true };
     private readonly Grid pageHost = new();
     private readonly InfoBar notice = new() { IsOpen = false, IsClosable = true };
-    private readonly TextBlock statusText = new() { Text = "Connecting", FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12) };
+    private readonly TextBlock statusText = new() { Text = Locale.Text("Connecting"), FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12) };
     private readonly TextBlock pageTitle = new() { FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
     private readonly TrayIcon tray;
     private bool ready;
@@ -33,6 +33,8 @@ public sealed partial class MainWindow : Window
     private int inputDevice;
     private int outputDevice = -1;
     private JsonNode? currentConversation;
+
+    private readonly Action refreshShellLanguage;
 
     public MainWindow()
     {
@@ -49,14 +51,32 @@ public sealed partial class MainWindow : Window
         layout.RowDefinitions.Add(new RowDefinition());
         var header = new Grid(); header.ColumnDefinitions.Add(new ColumnDefinition()); header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.Children.Add(pageTitle);
-        var refresh = Icon(Symbol.Refresh, "Refresh", ReloadPage);
-        var headerCommands = Row(Icon(Symbol.Add, "New conversation", async () => { await NewConversation(); navigation.SelectedItem = navigation.MenuItems[0]; await ShowPage("chat"); }), refresh);
+        var refresh = Icon(Symbol.Refresh, Locale.Text("Refresh"), ReloadPage);
+        var newConversationButton = Icon(Symbol.Add, Locale.Text("New conversation"), async () => { await NewConversation(); navigation.SelectedItem = navigation.MenuItems[0]; await ShowPage("chat"); });
+        var headerCommands = Row(newConversationButton, refresh);
         Grid.SetColumn(headerCommands, 1); header.Children.Add(headerCommands);
         layout.Children.Add(header); Grid.SetRow(notice, 1); layout.Children.Add(notice); Grid.SetRow(pageHost, 2); layout.Children.Add(pageHost);
         navigation.Content = layout;
         navigation.PaneTitle = "JuiAI Terminal";
-        foreach (var (id, label, symbol) in new[] { ("chat", "Chat", Symbol.Message), ("history", "Conversation history", Symbol.Clock), ("agents", "Agents", Symbol.People), ("models", "Models and connections", Symbol.Library), ("debug", "Test model", Symbol.Play), ("workspace", "Workspace", Symbol.Folder), ("memory", "Memory", Symbol.Bookmarks), ("voice", "Search and voice", Symbol.Microphone), ("voice-processing", "Audio processing", Symbol.Audio), ("tools", "Tools and approvals", Symbol.Permissions), ("updates", "Check for updates", Symbol.Sync), ("settings", "Settings and diagnostics", Symbol.Setting) })
-            navigation.MenuItems.Add(new NavigationViewItem { Content = label, Tag = id, Icon = new SymbolIcon(symbol) });
+        refreshShellLanguage = () =>
+        {
+            Root.Language = Locale.Language;
+            SetButtonLabel(refresh, Locale.Text("Refresh"));
+            SetButtonLabel(newConversationButton, Locale.Text("New conversation"));
+            syncingNavigation = true;
+            try
+            {
+                navigation.MenuItems.Clear();
+                foreach (var (id, label, symbol) in new[] { ("chat", Locale.Text("Chat"), Symbol.Message), ("history", Locale.Text("Conversation history"), Symbol.Clock), ("agents", Locale.Text("Agents"), Symbol.People), ("models", Locale.Text("Models and connections"), Symbol.Library), ("debug", Locale.Text("Test model"), Symbol.Play), ("workspace", Locale.Text("Workspace"), Symbol.Folder), ("memory", Locale.Text("Memory"), Symbol.Bookmarks), ("voice", Locale.Text("Search and voice"), Symbol.Microphone), ("voice-processing", Locale.Text("Audio processing"), Symbol.Audio), ("tools", Locale.Text("Tools and approvals"), Symbol.Permissions), ("updates", Locale.Text("Check for updates"), Symbol.Sync), ("settings", Locale.Text("Settings and diagnostics"), Symbol.Setting) })
+                {
+                    var item = new NavigationViewItem { Content = label, Tag = id, Icon = new SymbolIcon(symbol) };
+                    Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(item, "Nav-" + id);
+                    navigation.MenuItems.Add(item);
+                }
+            }
+            finally { syncingNavigation = false; }
+        };
+        refreshShellLanguage();
         navigation.PaneFooter = statusText;
         navigation.DisplayModeChanged += (_, e) => statusText.Visibility = e.DisplayMode == NavigationViewDisplayMode.Expanded ? Visibility.Visible : Visibility.Collapsed;
         navigation.SelectionChanged += (_, e) => { if (ready && !syncingNavigation && e.SelectedItemContainer?.Tag is string id) Run(() => ShowPage(id)); };
@@ -85,9 +105,9 @@ public sealed partial class MainWindow : Window
 
     private void UpdateMainBrainStatus(bool updateTransientStatus = false)
     {
-        if (updateTransientStatus || statusText.Text is not ("Recording" or "Transcribing"))
-            statusText.Text = "Main model · " + vm.MainModelName;
-        if (chatMainBrain != null) chatMainBrain.Text = "Default main model · " + vm.MainModelName;
+        if (updateTransientStatus || (statusText.Text != Locale.Text("Recording") && statusText.Text != Locale.Text("Transcribing")))
+            statusText.Text = Locale.Text("Main model · ") + vm.MainModelName;
+        if (chatMainBrain != null) chatMainBrain.Text = Locale.Text("Default main model · ") + vm.MainModelName;
     }
 
     private async Task ShowPage(string id)
@@ -141,8 +161,27 @@ public sealed partial class MainWindow : Window
         catch (OperationCanceledException) { }
         catch (Exception error) { ShowError(error.Message); }
     }
-    private void ShowError(string text) { notice.Title = "Action incomplete"; notice.Message = text; notice.Severity = InfoBarSeverity.Error; notice.IsOpen = true; }
+    private void ShowError(string text) { notice.Title = Locale.Text("Action incomplete"); notice.Message = text; notice.Severity = InfoBarSeverity.Error; notice.IsOpen = true; }
     private void ShowInfo(string text) { notice.Title = "JuiAI Terminal"; notice.Message = text; notice.Severity = InfoBarSeverity.Informational; notice.IsOpen = true; }
+    private static void SetButtonLabel(Button button, string label)
+    {
+        ToolTipService.SetToolTip(button, label);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, label);
+    }
+
+    private async Task SetLanguage(string language)
+    {
+        Locale.Save(vm.Client.Root, language);
+        Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = language;
+        vm.Client.RefreshEventLanguage();
+        notice.IsOpen = false;
+        refreshShellLanguage();
+        await vm.Refresh();
+        await vm.RefreshConversations();
+        UpdateMainBrainStatus(true);
+        await ShowPage(page);
+    }
+
     private Button Icon(Symbol symbol, string label, Func<Task> action)
     {
         var button = new Button { Content = new SymbolIcon(symbol), VerticalAlignment = VerticalAlignment.Center };
@@ -179,7 +218,7 @@ public sealed partial class MainWindow : Window
     private static string Selected(ComboBox combo) => (combo.SelectedItem as Choice)?.Id ?? "";
     private async Task<bool> Confirm(string title, string text)
     {
-        return await new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = ElementTheme.Dark, Title = title, Content = new ScrollViewer { Content = Text(text), MaxHeight = 420 }, PrimaryButtonText = "Confirm", CloseButtonText = "Cancel", DefaultButton = ContentDialogButton.Close }.ShowAsync() == ContentDialogResult.Primary;
+        return await new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = ElementTheme.Dark, Title = title, Content = new ScrollViewer { Content = Text(text), MaxHeight = 420 }, PrimaryButtonText = Locale.Text("Confirm"), CloseButtonText = Locale.Text("Cancel"), DefaultButton = ContentDialogButton.Close }.ShowAsync() == ContentDialogResult.Primary;
     }
     private async Task<string?> PickFolder()
     {
@@ -198,12 +237,12 @@ public sealed partial class MainWindow : Window
             if (ready)
             {
                 await vm.Refresh();
-                if (vm.State["maintenance"]?.GetValue<bool>() == true) { ShowInfo("An update is still running. Wait until it finishes before exiting."); return; }
+                if (vm.State["maintenance"]?.GetValue<bool>() == true) { ShowInfo(Locale.Text("An update is still running. Wait until it finishes before exiting.")); return; }
                 var processing = vm.State["voice_processing_running"]?.AsArray() ?? new JsonArray();
-                if (voiceProcessingSubmitting) { ShowInfo("An audio processing task is being submitted. Please wait before exiting."); return; }
+                if (voiceProcessingSubmitting) { ShowInfo(Locale.Text("An audio processing task is being submitted. Please wait before exiting.")); return; }
                 if (vm.State["running"]!.AsArray().Count > 0 || vm.State["debug_running"]?.AsArray().Count > 0 || debugRecording || processing.Count > 0)
                 {
-                    var result = await new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = ElementTheme.Dark, Title = "A task is still running", PrimaryButtonText = "Continue in background", SecondaryButtonText = "Cancel task and exit", CloseButtonText = "Back", DefaultButton = ContentDialogButton.Close }.ShowAsync();
+                    var result = await new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = ElementTheme.Dark, Title = Locale.Text("A task is still running"), PrimaryButtonText = Locale.Text("Continue in background"), SecondaryButtonText = Locale.Text("Cancel task and exit"), CloseButtonText = Locale.Text("Back"), DefaultButton = ContentDialogButton.Close }.ShowAsync();
                     if (result == ContentDialogResult.Primary) { tray.Show(); AppWindow.Hide(); return; }
                     if (result != ContentDialogResult.Secondary) return;
                     foreach (var id in vm.State["running"]!.AsArray()) await vm.Client.Post($"api/v1/runs/{id}/cancel");

@@ -9,6 +9,8 @@ public partial class App : Application
     private Window? window;
     public App()
     {
+        Locale.Load(Services.JuiClient.FindRoot());
+        Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = Locale.Language;
         RequestedTheme = ApplicationTheme.Dark;
         InitializeComponent();
         UnhandledException += (_, error) => RecordFailure(error.Exception);

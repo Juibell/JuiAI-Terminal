@@ -25,7 +25,7 @@ public static class MarkdownView
         {
             var value = code.Lines.ToString();
             var copy = new Button { Content = new SymbolIcon(Symbol.Copy), HorizontalAlignment = HorizontalAlignment.Right };
-            ToolTipService.SetToolTip(copy, "Copy code");
+            ToolTipService.SetToolTip(copy, Locale.Text("Copy code"));
             copy.Click += (_, _) => { var data = new DataPackage(); data.SetText(value); Clipboard.SetContent(data); };
             var content = new StackPanel { Spacing = 4 };
             content.Children.Add(copy);

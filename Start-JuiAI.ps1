@@ -1,9 +1,10 @@
-param([switch]$UiSmoke)
+﻿param([switch]$UiSmoke)
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Launcher-Language.ps1')
 $app = Join-Path $PSScriptRoot '15_Control-Center\App\JuiAI.ControlCenter.exe'
 if (-not (Test-Path -LiteralPath $app -PathType Leaf)) {
-    throw 'Build the native client with Build-ControlCenter.ps1 or extract the Windows x64 release ZIP.'
+    throw (Get-JuiText 'Build the native client with Build-ControlCenter.ps1 or extract the Windows x64 release ZIP.' '请先运行 Build-ControlCenter.ps1 构建桌面客户端，或解压 Windows x64 发布包。')
 }
 
 & (Join-Path $PSScriptRoot 'Initialize-Terminal.ps1')
@@ -46,7 +47,7 @@ if ([JuiAI.LauncherPackageIdentity]::IsPackaged()) {
     $needDispatch = 1
     $windowHandle = 0
     $desktop = $shell.Windows().FindWindowSW(0, 0, $desktopWindow, [ref]$windowHandle, $needDispatch)
-    if ($null -eq $desktop) { throw 'Windows Explorer desktop is unavailable for launching JuiAI.' }
+    if ($null -eq $desktop) { throw (Get-JuiText 'Windows Explorer desktop is unavailable for launching JuiAI.' '无法通过 Windows 资源管理器启动 JuiAI Terminal。') }
     $desktop.Document.Application.ShellExecute($app, $arguments, $directory, 'open', 1)
     return
 }

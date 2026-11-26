@@ -36,17 +36,17 @@ public sealed partial class MainWindow
         var history = new ListView { ItemsSource = vm.Conversations, SelectionMode = ListViewSelectionMode.Single, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         history.SelectionChanged += (_, _) => { if (history.SelectedItem is Choice choice) Run(async () => { vm.ConversationId = choice.Id; await LoadConversation(); }); };
         var left = new Grid { RowSpacing = 12 }; left.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); left.RowDefinitions.Add(new RowDefinition());
-        left.Children.Add(Command("New conversation", Symbol.Add, NewConversation)); Grid.SetRow(history, 1); left.Children.Add(history); grid.Children.Add(left);
+        left.Children.Add(Command(Locale.Text("New conversation"), Symbol.Add, NewConversation)); Grid.SetRow(history, 1); left.Children.Add(history); grid.Children.Add(left);
         var center = new Grid { RowSpacing = 12 }; center.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); center.RowDefinitions.Add(new RowDefinition()); center.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); Grid.SetColumn(center, 1); grid.Children.Add(center);
-        mode = Combo("Routing", new[] { new Choice("auto", "Automatic routing"), new("chat", "Chat with Jui only"), new("general", "OpenClaw"), new("code", "OpenCode"), new("research", "Hermes"), new("pipeline", "Coordinate three agents") });
-        chatModel = Combo("Main model for this message", new[] { new Choice("", "Use the default main model") }.Concat(vm.ModelChoices("text")));
+        mode = Combo(Locale.Text("Routing"), new[] { new Choice("auto", Locale.Text("Automatic routing")), new("chat", Locale.Text("Chat with Jui only")), new("general", "OpenClaw"), new("code", "OpenCode"), new("research", "Hermes"), new("pipeline", Locale.Text("Coordinate three agents")) });
+        chatModel = Combo(Locale.Text("Main model for this message"), new[] { new Choice("", Locale.Text("Use the default main model")) }.Concat(vm.ModelChoices("text")));
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(chatModel, "ChatTurnBrain");
-        ToolTipService.SetToolTip(chatModel, "Applies only to the next message");
+        ToolTipService.SetToolTip(chatModel, Locale.Text("Applies only to the next message"));
         var toolbar = new Grid { ColumnSpacing = 12 }; toolbar.ColumnDefinitions.Add(new ColumnDefinition()); toolbar.ColumnDefinitions.Add(new ColumnDefinition()); toolbar.Children.Add(mode); Grid.SetColumn(chatModel, 1); toolbar.Children.Add(chatModel);
-        chatWorkspace = Text("Workspace · " + (vm.State["workspaces"]!.AsArray().FirstOrDefault(w => w!["id"]!.ToString() == vm.WorkspaceId)?["name"]?.ToString() ?? vm.WorkspaceId), 12);
-        chatMainBrain = Text("Default main model · " + vm.MainModelName);
+        chatWorkspace = Text(Locale.Text("Workspace · ") + ControlViewModel.WorkspaceName(vm.State["workspaces"]!.AsArray().FirstOrDefault(w => w!["id"]!.ToString() == vm.WorkspaceId), vm.WorkspaceId), 12);
+        chatMainBrain = Text(Locale.Text("Default main model · ") + vm.MainModelName);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(chatMainBrain, "ChatDefaultBrain");
-        var brainSwitch = Command("Switch main model", Symbol.Switch, PickDefaultMainBrain);
+        var brainSwitch = Command(Locale.Text("Switch main model"), Symbol.Switch, PickDefaultMainBrain);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(brainSwitch, "ChatSwitchDefaultBrain");
         var workspaceHeader = new Grid { ColumnSpacing = 12 };
         workspaceHeader.ColumnDefinitions.Add(new ColumnDefinition());
@@ -57,16 +57,16 @@ public sealed partial class MainWindow
         center.Children.Add(Stack(workspaceHeader, toolbar));
         messages = new StackPanel { Spacing = 24, Padding = new Thickness(4, 10, 10, 16) };
         chatScroll = new ScrollViewer { Content = messages, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetRow(chatScroll, 1); center.Children.Add(chatScroll);
-        input = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 86, MaxHeight = 180, PlaceholderText = "Message Jui", HorizontalAlignment = HorizontalAlignment.Stretch };
+        input = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 86, MaxHeight = 180, PlaceholderText = Locale.Text("Message Jui"), HorizontalAlignment = HorizontalAlignment.Stretch };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(input, "ChatInput");
-        useMemory = new CheckBox { Content = "Use memory", IsChecked = true }; useSearch = new CheckBox { Content = "Search the web", IsChecked = false };
+        useMemory = new CheckBox { Content = Locale.Text("Use memory"), IsChecked = true }; useSearch = new CheckBox { Content = Locale.Text("Search the web"), IsChecked = false };
         attachment = Text("");
         var commands = new Grid(); commands.ColumnDefinitions.Add(new ColumnDefinition()); commands.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         commands.Children.Add(Row(useMemory, useSearch));
-        var buttons = Row(Icon(Symbol.Attach, "Add an image", AttachImage), Icon(Symbol.Microphone, "Start or stop recording", ToggleRecord), Icon(Symbol.Mute, "Stop reading aloud", () => { StopSpeech(); return Task.CompletedTask; }), Icon(Symbol.Stop, "Stop the current task", CancelCurrent), Icon(Symbol.Send, "Send", Send)); Grid.SetColumn(buttons, 1); commands.Children.Add(buttons);
+        var buttons = Row(Icon(Symbol.Attach, Locale.Text("Add an image"), AttachImage), Icon(Symbol.Microphone, Locale.Text("Start or stop recording"), ToggleRecord), Icon(Symbol.Mute, Locale.Text("Stop reading aloud"), () => { StopSpeech(); return Task.CompletedTask; }), Icon(Symbol.Stop, Locale.Text("Stop the current task"), CancelCurrent), Icon(Symbol.Send, Locale.Text("Send"), Send)); Grid.SetColumn(buttons, 1); commands.Children.Add(buttons);
         var composer = Stack(attachment, input, commands); Grid.SetRow(composer, 2); center.Children.Add(composer);
         trace = new StackPanel { Spacing = 10 };
-        var right = new ScrollViewer { Content = Stack(Text("Tasks and approvals", 16), trace), HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetColumn(right, 2); grid.Children.Add(right);
+        var right = new ScrollViewer { Content = Stack(Text(Locale.Text("Tasks and approvals"), 16), trace), HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetColumn(right, 2); grid.Children.Add(right);
         void Adapt()
         {
             var width = pageHost.ActualWidth;
@@ -79,9 +79,9 @@ public sealed partial class MainWindow
         pageHost.Children.Add(grid);
         if (vm.ConversationId != null) await LoadConversation();
         else if (string.IsNullOrEmpty(vm.MainModelId))
-            messages.Children.Add(Stack(Text("Connect your first model", 22),
-                Text("Add a provider connection, create a text model profile, then select it as your main model."),
-                Command("Models and connections", Symbol.Library, () => ShowPage("models"))));
+            messages.Children.Add(Stack(Text(Locale.Text("Connect your first model"), 22),
+                Text(Locale.Text("Add a provider connection, create a text model profile, then select it as your main model.")),
+                Command(Locale.Text("Models and connections"), Symbol.Library, () => ShowPage("models"))));
         else messages.Children.Add(Text("Jui", 24));
         await RefreshPendingApprovals();
     }
@@ -91,18 +91,18 @@ public sealed partial class MainWindow
         var choices = vm.ModelChoices("text").ToArray();
         if (choices.Length == 0)
         {
-            ShowInfo("Enable a text model in Models and connections.");
+            ShowInfo(Locale.Text("Enable a text model in Models and connections."));
             return;
         }
-        var picker = Combo("Text model", choices, vm.MainModelId);
+        var picker = Combo(Locale.Text("Text model"), choices, vm.MainModelId);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(picker, "DefaultMainBrainPicker");
-        if (!await Form("Change default main model", Stack(picker), "Set as default")) return;
+        if (!await Form(Locale.Text("Change default main model"), Stack(picker), Locale.Text("Set as default"))) return;
         var modelId = Selected(picker);
         if (modelId == vm.MainModelId) return;
 
         await vm.SetMainModel(modelId);
         UpdateMainBrainStatus();
-        ShowInfo($"Set {vm.MainModelName} as the default main model.");
+        ShowInfo(Locale.Format("Set {0} as the default main model.", vm.MainModelName));
     }
 
     private async Task NewConversation()
@@ -116,12 +116,12 @@ public sealed partial class MainWindow
         if (vm.ConversationId == null || messages == null) return;
         currentConversation = await vm.Client.Get("api/v1/conversations/" + vm.ConversationId);
         var workspace = vm.State["workspaces"]!.AsArray().FirstOrDefault(w => w!["id"]!.ToString() == currentConversation["workspace_id"]!.ToString());
-        if (chatWorkspace != null) { chatWorkspace.Text = "Workspace · " + (workspace?["name"]?.ToString() ?? currentConversation["workspace_id"]!.ToString()); ToolTipService.SetToolTip(chatWorkspace, workspace?["path"]?.ToString() ?? ""); }
+        if (chatWorkspace != null) { chatWorkspace.Text = Locale.Text("Workspace · ") + ControlViewModel.WorkspaceName(workspace, currentConversation["workspace_id"]!.ToString()); ToolTipService.SetToolTip(chatWorkspace, workspace?["path"]?.ToString() ?? ""); }
         messages.Children.Clear(); liveText = null;
         foreach (var item in currentConversation["messages"]!.AsArray().Where(m => m?["superseded"]?.GetValue<bool>() != true)) AddMessage(item!);
         var running = currentConversation["runs"]!.AsArray().LastOrDefault(r => r?["status"]?.ToString() is "queued" or "running");
         vm.RunId = running?["id"]?.ToString();
-        if (running != null) { liveRun = vm.RunId!; liveText = Text(running["output"]?.ToString() ?? "", 15); messages.Children.Add(Stack(Text("Jui · Working", 12), liveText)); }
+        if (running != null) { liveRun = vm.RunId!; liveText = Text(running["output"]?.ToString() ?? "", 15); messages.Children.Add(Stack(Text(Locale.Text("Jui · Working"), 12), liveText)); }
         chatScroll?.ChangeView(null, double.MaxValue, null);
     }
     private void AddMessage(JsonNode item)
@@ -129,9 +129,9 @@ public sealed partial class MainWindow
         if (messages == null) return;
         var assistant = item["role"]!.ToString() == "assistant";
         var content = item["content"]?.ToString() ?? "";
-        var block = Stack(Text(assistant ? "Jui" : "You", 12), MarkdownView.Render(content));
+        var block = Stack(Text(assistant ? "Jui" : Locale.Text("You"), 12), MarkdownView.Render(content));
         if (assistant)
-            block.Children.Add(Row(Icon(Symbol.Copy, "Copy reply", () => { var data = new DataPackage(); data.SetText(content); Clipboard.SetContent(data); return Task.CompletedTask; }), Icon(Symbol.Volume, "Read reply aloud", () => Speak(content, item["run_id"]?.ToString())), Icon(Symbol.Save, "Save to memory", () => SaveMemoryFromText(content)), Icon(Symbol.Refresh, "Regenerate", () => Regenerate(item))));
+            block.Children.Add(Row(Icon(Symbol.Copy, Locale.Text("Copy reply"), () => { var data = new DataPackage(); data.SetText(content); Clipboard.SetContent(data); return Task.CompletedTask; }), Icon(Symbol.Volume, Locale.Text("Read reply aloud"), () => Speak(content, item["run_id"]?.ToString())), Icon(Symbol.Save, Locale.Text("Save to memory"), () => SaveMemoryFromText(content)), Icon(Symbol.Refresh, Locale.Text("Regenerate"), () => Regenerate(item))));
         messages.Children.Add(block);
     }
     private async Task Send()
@@ -163,7 +163,7 @@ public sealed partial class MainWindow
         var picker = new FileOpenPicker(); picker.FileTypeFilter.Add(".png"); picker.FileTypeFilter.Add(".jpg"); picker.FileTypeFilter.Add(".jpeg"); InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
         var file = await picker.PickSingleFileAsync(); if (file == null) return;
         var bytes = await File.ReadAllBytesAsync(file.Path);
-        if (bytes.Length > 2_900_000) throw new InvalidOperationException("Images must be 2.9 MB or smaller.");
+        if (bytes.Length > 2_900_000) throw new InvalidOperationException(Locale.Text("Images must be 2.9 MB or smaller."));
         attachedImage = "data:image/" + (file.FileType.ToLowerInvariant() == ".png" ? "png" : "jpeg") + ";base64," + Convert.ToBase64String(bytes);
         attachment!.Text = file.Name;
     }
@@ -172,12 +172,12 @@ public sealed partial class MainWindow
         StopSpeech();
         if (!audio.Recording)
         {
-            audio.Start(inputDevice); statusText.Text = "Recording";
+            audio.Start(inputDevice); statusText.Text = Locale.Text("Recording");
             recordTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(39) };
             recordTimer.Tick += (_, _) => { recordTimer.Stop(); if (audio.Recording) Run(ToggleRecord); }; recordTimer.Start(); return;
         }
         recordTimer?.Stop();
-        var wav = await audio.Stop(); statusText.Text = "Transcribing";
+        var wav = await audio.Stop(); statusText.Text = Locale.Text("Transcribing");
         try { var result = await vm.Client.Transcribe(wav, currentConversation?["workspace_id"]?.ToString() ?? vm.WorkspaceId, lifetime.Token); if (input != null) input.Text = result["text"]!.ToString(); }
         finally { UpdateMainBrainStatus(updateTransientStatus: true); }
     }
@@ -199,12 +199,17 @@ public sealed partial class MainWindow
             liveText.Text += data["text"]?.ToString(); return;
         }
         if (kind == "stage" && page == "chat" && runId == vm.RunId)
-            trace?.Children.Add(Text($"{data["agent"]} · {data["stage"] ?? data["status"]} · {data["status"]}"));
+        {
+            var stage = data["stage"]?.ToString();
+            var status = Locale.Status(data["status"]?.ToString());
+            var label = stage == null ? status : $"{Locale.Status(stage)} · {status}";
+            trace?.Children.Add(Text($"{data["agent"]} · {label}"));
+        }
         if (kind is "approval" or "approval_changed")
         {
             if (page == "chat") await RefreshPendingApprovals();
             else if (page == "tools") await ShowPage("tools");
-            if (kind == "approval") ShowInfo("An action is awaiting approval. Open Tools and approvals to review it.");
+            if (kind == "approval") ShowInfo(Locale.Text("An action is awaiting approval. Open Tools and approvals to review it."));
         }
         if (kind == "run" && data["status"]?.ToString() is "completed" or "failed" or "cancelled")
         {

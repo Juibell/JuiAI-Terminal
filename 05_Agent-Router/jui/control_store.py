@@ -426,6 +426,7 @@ class ControlStore:
                 "id": uuid.uuid4().hex,
                 "workspace_id": workspace["id"],
                 "title": "New chat",
+                "title_is_placeholder": True,
                 "favorite": False,
                 "created": timestamp(),
             },

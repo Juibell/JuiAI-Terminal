@@ -29,23 +29,23 @@ public sealed partial class MainWindow
     {
         voiceProcessingFolder ??= Path.Combine(vm.Client.Root, "14_Workspace");
         JsonNode? availability = null;
-        var runtime = Text("Checking local models…", 13);
-        var input = VoicePathField("Input audio", "Choose a local audio file");
-        var folder = VoicePathField("Output location", "Choose an output folder");
-        var mode = Combo("Processing mode", [new("inworld", "Inworld voice isolation"), new("uvr_inworld", "UVR separation + Inworld cleanup")], voiceProcessingMode);
-        var device = Combo("Inworld inference device", [new("auto", "Automatic"), new("cuda", "CUDA"), new("cpu", "CPU")], voiceProcessingDevice);
+        var runtime = Text(Locale.Text("Checking local models…"), 13);
+        var input = VoicePathField(Locale.Text("Input audio"), Locale.Text("Choose a local audio file"));
+        var folder = VoicePathField(Locale.Text("Output location"), Locale.Text("Choose an output folder"));
+        var mode = Combo(Locale.Text("Processing mode"), [new("inworld", Locale.Text("Inworld voice isolation")), new("uvr_inworld", Locale.Text("UVR separation + Inworld cleanup"))], voiceProcessingMode);
+        var device = Combo(Locale.Text("Inworld inference device"), [new("auto", Locale.Text("Automatic")), new("cuda", "CUDA"), new("cpu", "CPU")], voiceProcessingDevice);
         var modeDetails = Text("", 13);
-        var background = new CheckBox { Content = "Save audio removed by Inworld", IsChecked = voiceProcessingBackground };
-        var start = new Button { Content = "Start processing", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
-        var cancel = new Button { Content = "Cancel task" };
+        var background = new CheckBox { Content = Locale.Text("Save audio removed by Inworld"), IsChecked = voiceProcessingBackground };
+        var start = new Button { Content = Locale.Text("Start processing"), Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        var cancel = new Button { Content = Locale.Text("Cancel task") };
         var status = Text("", 13);
         var progress = new ProgressBar { Visibility = Visibility.Collapsed, Minimum = 0, Maximum = 100 };
-        var result = Stack(Text("Processing results", 18));
+        var result = Stack(Text(Locale.Text("Processing results"), 18));
         var resultBody = Stack();
         result.Children.Add(resultBody);
         JsonNode? shownResult = null;
 
-        var chooseInput = Command("Choose audio", Symbol.OpenFile, async () =>
+        var chooseInput = Command(Locale.Text("Choose audio"), Symbol.OpenFile, async () =>
         {
             var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.MusicLibrary };
             foreach (var suffix in new[] { ".wav", ".flac", ".mp3", ".ogg", ".opus", ".m4a", ".aac", ".wma", ".aif", ".aiff", ".webm" })
@@ -54,28 +54,28 @@ public sealed partial class MainWindow
             if (await picker.PickSingleFileAsync() is { } file) voiceProcessingInput = file.Path;
             renderVoiceProcessing?.Invoke();
         });
-        var chooseFolder = Command("Choose folder", Symbol.Folder, async () =>
+        var chooseFolder = Command(Locale.Text("Choose folder"), Symbol.Folder, async () =>
         {
             voiceProcessingFolder = await PickFolder() ?? voiceProcessingFolder;
             renderVoiceProcessing?.Invoke();
         });
-        var openUvr = Command("Open UVR", Symbol.OpenFile, () =>
+        var openUvr = Command(Locale.Text("Open UVR"), Symbol.OpenFile, () =>
         {
             var root = availability?["uvr_root"]?.ToString();
-            if (string.IsNullOrWhiteSpace(root)) throw new InvalidOperationException("Set the Ultimate Vocal Remover installation folder first.");
+            if (string.IsNullOrWhiteSpace(root)) throw new InvalidOperationException(Locale.Text("Set the Ultimate Vocal Remover installation folder first."));
             var executable = Path.Combine(root, "UVR.exe");
-            if (!File.Exists(executable)) throw new InvalidOperationException("Could not find UVR.exe in the Ultimate Vocal Remover installation.");
+            if (!File.Exists(executable)) throw new InvalidOperationException(Locale.Text("Could not find UVR.exe in the Ultimate Vocal Remover installation."));
             using var process = Process.Start(new ProcessStartInfo(executable) { WorkingDirectory = root, UseShellExecute = true });
             return Task.CompletedTask;
         });
         openUvr.IsEnabled = false;
         openUvr.HorizontalAlignment = HorizontalAlignment.Right;
 
-        var title = Text("Inworld Voice Isolator", 26);
+        var title = Text(Locale.Text("Inworld Voice Isolator"), 26);
         title.FontWeight = FontWeights.SemiBold;
         var intro = VoiceProcessingCard(VoiceProcessingColumns(
-            Stack(title, Text("Isolate speech from a recording on this computer. Optionally separate vocals and accompaniment first with Ultimate Vocal Remover."), runtime), openUvr, GridLength.Auto));
-        var form = Stack(Text("Processing settings", 18), VoiceProcessingColumns(input, chooseInput, GridLength.Auto),
+            Stack(title, Text(Locale.Text("Isolate speech from a recording on this computer. Optionally separate vocals and accompaniment first with Ultimate Vocal Remover.")), runtime), openUvr, GridLength.Auto));
+        var form = Stack(Text(Locale.Text("Processing settings"), 18), VoiceProcessingColumns(input, chooseInput, GridLength.Auto),
             VoiceProcessingColumns(folder, chooseFolder, GridLength.Auto),
             VoiceProcessingColumns(mode, device, new GridLength(0.78, GridUnitType.Star)), modeDetails, background,
             status, progress, Row(start, cancel));
@@ -115,20 +115,20 @@ public sealed partial class MainWindow
             cancel.IsEnabled = active && jobStatus != "cancelling" && !voiceProcessingCancelling;
             modeDetails.Text = useUvr
                 ? availability?["uvr_ready"]?.GetValue<bool>() == true
-                    ? "UVR separates vocals and accompaniment before Inworld cleans the vocal track. All separated tracks are saved."
-                    : "Combined processing requires an available UVR separation model and runtime."
-                : "For dialogue, narration, and live recordings. Output is 48 kHz mono WAV.";
-            status.Text = voiceProcessingSubmitting ? "Submitting task…" : jobStatus switch
+                    ? Locale.Text("UVR separates vocals and accompaniment before Inworld cleans the vocal track. All separated tracks are saved.")
+                    : Locale.Text("Combined processing requires an available UVR separation model and runtime.")
+                : Locale.Text("For dialogue, narration, and live recordings. Output is 48 kHz mono WAV.");
+            status.Text = voiceProcessingSubmitting ? Locale.Text("Submitting task…") : jobStatus switch
             {
-                "queued" => "Waiting for local inference resources…",
-                "running" when stage == "waiting" => "Waiting for local inference resources…",
-                "running" when stage == "uvr" => "UVR is separating vocals and accompaniment…",
-                "running" => "Inworld is isolating speech…",
-                "cancelling" => "Canceling task…",
-                "cancelled" => "Task canceled.",
-                "failed" => job?["error"]?.ToString() ?? "Processing failed.",
-                "completed" => "Processing complete.",
-                _ => "Each run creates a separate output folder in the selected location."
+                "queued" => Locale.Text("Waiting for local inference resources…"),
+                "running" when stage == "waiting" => Locale.Text("Waiting for local inference resources…"),
+                "running" when stage == "uvr" => Locale.Text("UVR is separating vocals and accompaniment…"),
+                "running" => Locale.Text("Inworld is isolating speech…"),
+                "cancelling" => Locale.Text("Canceling task…"),
+                "cancelled" => Locale.Text("Task canceled."),
+                "failed" => job?["error"]?.ToString() ?? Locale.Text("Processing failed."),
+                "completed" => Locale.Text("Processing complete."),
+                _ => Locale.Text("Each run creates a separate output folder in the selected location.")
             };
             var percent = job?["progress"]?.GetValue<double>();
             progress.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
@@ -157,11 +157,11 @@ public sealed partial class MainWindow
             openUvr.IsEnabled = !string.IsNullOrWhiteSpace(availability["uvr_root"]?.ToString()) && File.Exists(Path.Combine(availability["uvr_root"]!.ToString(), "UVR.exe"));
             var inworldReady = availability["inworld_ready"]?.GetValue<bool>() == true;
             var uvrReady = availability["uvr_ready"]?.GetValue<bool>() == true;
-            runtime.Text = $"Inworld · {(inworldReady ? "Available locally" : "Runtime unavailable")}    UVR separation · {(uvrReady ? "Available locally" : "Unavailable")}";
+            runtime.Text = Locale.Format("Inworld · {0}    UVR separation · {1}", (inworldReady ? Locale.Text("Available locally") : Locale.Text("Runtime unavailable")), (uvrReady ? Locale.Text("Available locally") : Locale.Text("Unavailable")));
         }
         catch (Exception error) when (error is HttpRequestException or InvalidOperationException or TaskCanceledException)
         {
-            runtime.Text = "Could not read local model status. Select Refresh in the upper right to try again.";
+            runtime.Text = Locale.Text("Could not read local model status. Select Refresh in the upper right to try again.");
         }
         Render();
         if (IsVoiceProcessingActive(voiceProcessingJob) && voiceProcessingJob?["id"]?.ToString() is { } id)
@@ -221,28 +221,28 @@ public sealed partial class MainWindow
         panel.Children.Clear();
         if (job == null)
         {
-            panel.Children.Add(Text("When processing finishes, preview each track and open the output folder in File Explorer.", 13));
+            panel.Children.Add(Text(Locale.Text("When processing finishes, preview each track and open the output folder in File Explorer."), 13));
             return;
         }
         var sampleRate = job["sample_rate"]?.GetValue<int>() ?? 48000;
         var seconds = (job["sample_count"]?.GetValue<long>() ?? 0) / (double)sampleRate;
         var devices = "Inworld · " + (job["device"]?.ToString() ?? "").ToUpperInvariant();
         if (job["uvr_device"]?.ToString() is { } uvr) devices += "    UVR · " + uvr.ToUpperInvariant();
-        panel.Children.Add(Text($"{devices}\n{sampleRate / 1000.0:g} kHz · {seconds:0.0} s", 13));
+        panel.Children.Add(Text(Locale.Format("{0}\n{1:g} kHz · {2:0.0} s", devices, sampleRate / 1000.0, seconds), 13));
         if (job["output_dir"]?.ToString() is { } directory)
         {
-            panel.Children.Add(Row(Command("Open output folder", Symbol.Folder, async () =>
+            panel.Children.Add(Row(Command(Locale.Text("Open output folder"), Symbol.Folder, async () =>
             {
                 if (!await Launcher.LaunchFolderAsync(await StorageFolder.GetFolderFromPathAsync(directory)))
-                    throw new InvalidOperationException("Could not open the output folder.");
-            }), Icon(Symbol.Stop, "Stop preview", () => { audio.StopPlayback(); return Task.CompletedTask; })));
+                    throw new InvalidOperationException(Locale.Text("Could not open the output folder."));
+            }), Icon(Symbol.Stop, Locale.Text("Stop preview"), () => { audio.StopPlayback(); return Task.CompletedTask; })));
         }
-        foreach (var (key, label) in new[] { ("voice_path", "Clean vocals"), ("background_path", "Audio removed by Inworld"), ("vocals_path", "Original UVR vocals"), ("instrumental_path", "UVR accompaniment") })
+        foreach (var (key, label) in new[] { ("voice_path", Locale.Text("Clean vocals")), ("background_path", Locale.Text("Audio removed by Inworld")), ("vocals_path", Locale.Text("Original UVR vocals")), ("instrumental_path", Locale.Text("UVR accompaniment")) })
         {
             if (job[key]?.ToString() is not { } path) continue;
             var track = Stack(Text(label), Text(Path.GetFileName(path), 12));
             track.Spacing = 4;
-            var row = ItemRow(track, Icon(Symbol.Play, $"Preview{label}", () =>
+            var row = ItemRow(track, Icon(Symbol.Play, Locale.Format("Preview{0}", label), () =>
             {
                 StopSpeech();
                 audio.PlayFile(path, outputDevice);

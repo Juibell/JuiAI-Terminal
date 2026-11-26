@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from .command_worker import own_windows_job
 from .config import ROOT, child_environment
 from .control_api import control
+from .language import localize_error
 
 router = APIRouter(prefix="/api/v1/voice-processing")
 DIRECTORY = ROOT / "02_Models/voice-isolator"
@@ -370,9 +371,9 @@ async def submit_job(body: ProcessingInput, request: Request):
 
 @router.get("/jobs/{identity}")
 async def job_status(identity: str, request: Request):
-    return processing(request).jobs[identity]
+    return localize_error(processing(request).jobs[identity])
 
 
 @router.post("/jobs/{identity}/cancel")
 async def cancel_job(identity: str, request: Request):
-    return processing(request).cancel(identity)
+    return localize_error(processing(request).cancel(identity))

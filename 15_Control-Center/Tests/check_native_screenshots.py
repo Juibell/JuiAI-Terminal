@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image, ImageStat
 
 directory = Path(__file__).resolve().parents[2] / "12_Logs/ControlCenter-QA"
-files = sorted(directory.glob("*.png"))
+files = sorted(directory.glob("*/*.png"))
 assert len(files) >= 11, "Native page screenshots are missing"
 for path in files:
     with Image.open(path) as source:

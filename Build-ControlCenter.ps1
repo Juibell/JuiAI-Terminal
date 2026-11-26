@@ -1,4 +1,4 @@
-param([switch]$Test, [switch]$UiSmoke, [string]$OutputDirectory, [string]$Version = '0.1.0')
+param([switch]$Test, [switch]$UiSmoke, [string]$OutputDirectory, [string]$Version = '0.2.0')
 $ErrorActionPreference = 'Stop'
 $project = Join-Path $PSScriptRoot '15_Control-Center'
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $project 'App' }
